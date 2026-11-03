@@ -71,7 +71,17 @@ The same capture code serves a local page:
 npm start
 ```
 
-Open http://127.0.0.1:3000. The interface is in Portuguese. It lists the public homepages for a GitHub user and captures up to six of them, desktop and mobile. The server screenshots only URLs that belong to that user, and it skips loopback and private hosts. Images stay on this machine, in the system temp directory.
+Open http://127.0.0.1:3000. The interface is in Portuguese. It lists the public homepages for a GitHub user and captures up to six of them, desktop and mobile. The server screenshots only URLs that belong to that user, and it skips loopback and private hosts. Images stay on this machine, in the system temp directory. The CLI above is unchanged.
+
+## Vercel
+
+The page can run as a Vercel function. There the capture finishes inside the request, the JPEGs come back inline, and each run accepts at most two homepages so it fits the function timeout. The browser is `@sparticuz/chromium`. Install skips the full Puppeteer download.
+
+```bash
+npx vercel deploy --prod
+```
+
+Set `GITHUB_TOKEN` on the project if the GitHub API rate limit gets in the way.
 
 ## Tests
 

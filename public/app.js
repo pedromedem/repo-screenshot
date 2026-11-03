@@ -17,6 +17,7 @@ const state = {
   homepages: [],
   selected: new Set(),
   rendered: 0,
+  maxCaptures: 6,
 };
 
 searchForm.addEventListener("submit", (event) => {
@@ -25,7 +26,7 @@ searchForm.addEventListener("submit", (event) => {
 });
 
 document.querySelector("#select-some").addEventListener("click", () => {
-  state.selected = new Set(visibleHomepages().slice(0, 6));
+  state.selected = new Set(visibleHomepages().slice(0, state.maxCaptures));
   syncChecks();
 });
 
@@ -49,6 +50,8 @@ async function search() {
   state.username = data.username;
   state.token = token;
   state.homepages = data.homepages;
+  state.maxCaptures = Number(data.maxCaptures) || 6;
+  document.querySelector("#select-some").textContent = `Selecionar ${state.maxCaptures}`;
   state.selected = new Set(data.homepages.slice(0, 1));
   filterInput.value = "";
   renderList();
@@ -97,9 +100,9 @@ function renderList() {
 
 function toggle(url, checkbox) {
   if (checkbox.checked) {
-    if (state.selected.size >= 6) {
+    if (state.selected.size >= state.maxCaptures) {
       checkbox.checked = false;
-      setStatus("Dá para capturar no máximo 6 homepages por vez.");
+      setStatus(`Dá para capturar no máximo ${state.maxCaptures} homepage(s) por vez.`);
       return;
     }
     state.selected.add(url);
@@ -117,7 +120,7 @@ function updateSelection() {
   const count = state.selected.size;
   selectionCount.textContent = count === 0
     ? "Nenhum site selecionado"
-    : `${count} de no máximo 6 selecionado(s)`;
+    : `${count} de no máximo ${state.maxCaptures} selecionado(s)`;
   captureButton.disabled = count === 0;
   captureButton.textContent = count === 0 ? "Capturar" : `Capturar ${count}`;
 }
@@ -136,7 +139,8 @@ async function capture() {
       token: state.token,
       urls,
     });
-    await poll(job.id);
+    if (job.status === "done" || job.status === "error") paintJob(job);
+    else await poll(job.id);
   } finally {
     setBusy(false);
     updateSelection();

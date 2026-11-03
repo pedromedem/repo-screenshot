@@ -45,6 +45,16 @@ function translateGithubError(error) {
 }
 
 function readBody(req) {
+  if (req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)) {
+    return Promise.resolve(req.body);
+  }
+  if (typeof req.body === "string" && req.body.length) {
+    try {
+      return Promise.resolve(JSON.parse(req.body));
+    } catch {
+      return Promise.reject(httpError("JSON inválido.", 400));
+    }
+  }
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
@@ -111,22 +121,27 @@ function createServer(options = {}) {
     }
   }
 
-  async function drain() {
-    if (active) return;
-    const job = queue.shift();
-    if (!job) return;
-    active = true;
+  function onVercel() {
+    return Boolean(process.env.VERCEL);
+  }
+
+  function captureLimit() {
+    return onVercel() ? 2 : 6;
+  }
+
+  async function runJob(job) {
     job.status = "running";
+    const inlineImages = onVercel();
     try {
       await shoot(job.urls, {
         outputDir: job.dir,
-        delayMs: 500,
-        quality: 80,
-        timeoutMs: 30_000,
+        delayMs: inlineImages ? 0 : 500,
+        quality: inlineImages ? 60 : 80,
+        timeoutMs: inlineImages ? 20_000 : 30_000,
         hide: ["#modal"],
         fullPage: false,
         async onProgress(result) {
-          job.results.push(toPublicResult(job, result));
+          job.results.push(toPublicResult(job, result, inlineImages));
           job.completed = job.results.length;
         },
       });
@@ -134,6 +149,16 @@ function createServer(options = {}) {
     } catch (error) {
       job.status = "error";
       job.error = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  async function drain() {
+    if (active) return;
+    const job = queue.shift();
+    if (!job) return;
+    active = true;
+    try {
+      await runJob(job);
     } finally {
       active = false;
       drain().catch((error) => {
@@ -196,6 +221,7 @@ function createServer(options = {}) {
         username,
         truncated,
         blocked: blocked.length,
+        maxCaptures: captureLimit(),
         homepages: visible,
       });
       return;
@@ -208,7 +234,7 @@ function createServer(options = {}) {
       const { visible } = await loadHomepages(username, token);
       let urls;
       try {
-        urls = selectCaptureUrls(visible, body.urls);
+        urls = selectCaptureUrls(visible, body.urls, captureLimit());
       } catch (error) {
         throw httpError(error.message, 400);
       }
@@ -229,6 +255,11 @@ function createServer(options = {}) {
         files: new Map(),
       };
       remember(job);
+      if (onVercel()) {
+        await runJob(job);
+        sendJson(res, 200, publicJob(job));
+        return;
+      }
       enqueue(job);
       sendJson(res, 202, publicJob(job));
       return;
@@ -274,12 +305,14 @@ function readToken(token) {
   return token.trim();
 }
 
-function toPublicResult(job, result) {
+function toPublicResult(job, result, inlineImages) {
   const files = {};
   for (const [viewport, filePath] of Object.entries(result.files)) {
     const name = path.basename(filePath);
     job.files.set(name, filePath);
-    files[viewport] = `/shots/${job.id}/${encodeURIComponent(name)}`;
+    files[viewport] = inlineImages
+      ? `data:image/jpeg;base64,${fs.readFileSync(filePath).toString("base64")}`
+      : `/shots/${job.id}/${encodeURIComponent(name)}`;
   }
   let host = result.url;
   try {
