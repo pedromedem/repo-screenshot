@@ -1,13 +1,9 @@
 #!/usr/bin/env node
 
-const fs = require("fs");
 const path = require("path");
 const { Command } = require("commander");
-const {
-  fetchUserRepos,
-  homepagesFromRepos,
-  siteDirectoryName,
-} = require("./lib/repos");
+const { fetchUserRepos, homepagesFromRepos } = require("./lib/repos");
+const { captureSites } = require("./lib/capture");
 
 const program = new Command();
 
@@ -88,88 +84,6 @@ function readOptions(argv) {
   };
 }
 
-async function hideSelectors(page, selectors) {
-  if (!selectors.length) return;
-  await page.evaluate((candidates) => {
-    for (const selector of candidates) {
-      let nodes;
-      try {
-        nodes = document.querySelectorAll(selector);
-      } catch {
-        continue;
-      }
-      for (const node of nodes) {
-        node.style.setProperty("display", "none", "important");
-      }
-    }
-  }, selectors);
-}
-
-function viewportTargets(puppeteer) {
-  const iphone = puppeteer.KnownDevices["iPhone X"];
-  if (!iphone || !iphone.viewport) {
-    throw new Error("Puppeteer device profile iPhone X is not available");
-  }
-
-  return [
-    {
-      name: "desktop",
-      setup: (page) =>
-        page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 }),
-    },
-    {
-      name: "mobile",
-      setup: async (page) => {
-        await page.emulate(iphone);
-        await page.setViewport({ ...iphone.viewport, deviceScaleFactor: 1 });
-      },
-    },
-  ];
-}
-
-function isTimeout(error) {
-  return error instanceof Error && /timeout/i.test(error.message);
-}
-
-async function openPage(page, url, timeoutMs) {
-  try {
-    await page.goto(url, { waitUntil: "networkidle2", timeout: timeoutMs });
-  } catch (error) {
-    if (!isTimeout(error)) throw error;
-    const ready = await page.evaluate(() => document.readyState).catch(() => "");
-    if (ready !== "interactive" && ready !== "complete") throw error;
-  }
-}
-
-async function captureViewport(browser, url, target, options) {
-  const page = await browser.newPage();
-  try {
-    await target.setup(page);
-    await openPage(page, url, options.timeoutMs);
-    await hideSelectors(page, options.hide);
-    if (options.delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, options.delayMs));
-    }
-
-    const directoryName = siteDirectoryName(url);
-    const directoryPath = path.join(options.outputDir, directoryName);
-    fs.mkdirSync(directoryPath, { recursive: true });
-    const filePath = path.join(
-      directoryPath,
-      `${directoryName}_${target.name}.jpeg`
-    );
-    await page.screenshot({
-      path: filePath,
-      type: "jpeg",
-      quality: options.quality,
-      fullPage: options.fullPage,
-    });
-    return filePath;
-  } finally {
-    await page.close().catch(() => {});
-  }
-}
-
 async function main(argv = process.argv) {
   const options = readOptions(argv);
   if (!options.name) {
@@ -202,28 +116,18 @@ async function main(argv = process.argv) {
 
   if (sites.length === 0) return { saved: 0, failed: 0, sites };
 
-  const puppeteer = require("puppeteer");
-  const targets = viewportTargets(puppeteer);
-  const browser = await puppeteer.launch({ headless: "new" });
+  const captured = await captureSites(sites, options);
   let saved = 0;
   let failed = 0;
-
-  try {
-    for (const url of sites) {
-      for (const target of targets) {
-        try {
-          const filePath = await captureViewport(browser, url, target, options);
-          console.log(filePath);
-          saved += 1;
-        } catch (error) {
-          failed += 1;
-          const message = error instanceof Error ? error.message : String(error);
-          console.error(`Failed ${target.name} ${url}: ${message}`);
-        }
-      }
+  for (const result of captured) {
+    for (const filePath of Object.values(result.files)) {
+      console.log(filePath);
+      saved += 1;
     }
-  } finally {
-    await browser.close().catch(() => {});
+    for (const [viewport, message] of Object.entries(result.errors)) {
+      failed += 1;
+      console.error(`Failed ${viewport} ${result.url}: ${message}`);
+    }
   }
 
   console.error(`Saved ${saved} screenshot(s). Failed: ${failed}.`);

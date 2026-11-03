@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Repo Screenshot</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <p class="eyebrow">GitHub · contato de páginas</p>
+      <div class="title-row">
+        <h1>Repo Screenshot</h1>
+        <p class="lede">
+          Informe um usuário. O servidor lista as homepages dos repositórios públicos e tira o print desktop e mobile.
+        </p>
+      </div>
+    </header>
+
+    <main>
+      <form id="search-form" class="search">
+        <div class="field">
+          <label for="username">Usuário do GitHub</label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="torvalds"
+            required
+          />
+        </div>
+        <button id="search-button" type="submit">Buscar homepages</button>
+        <details class="token">
+          <summary>Token do GitHub, se a API limitar</summary>
+          <label for="token">Token</label>
+          <input id="token" name="token" type="password" autocomplete="off" spellcheck="false" />
+          <p>Vai só nesta requisição. Também vale a variável GITHUB_TOKEN do servidor.</p>
+        </details>
+      </form>
+
+      <p id="status" class="status" role="status"></p>
+
+      <section id="list-section" class="panel" hidden>
+        <div class="panel-head">
+          <h2>Homepages</h2>
+          <div class="panel-actions">
+            <button id="select-some" type="button">Selecionar 6</button>
+            <button id="clear-selection" type="button">Limpar</button>
+          </div>
+        </div>
+        <label class="filter-label" for="filter">Filtrar</label>
+        <input id="filter" type="search" placeholder="domínio ou caminho" />
+        <ul id="site-list" class="site-list"></ul>
+        <div class="capture-bar">
+          <p id="selection-count">Nenhum site selecionado</p>
+          <button id="capture-button" type="button" disabled>Capturar</button>
+        </div>
+      </section>
+
+      <section id="results-section" class="panel" hidden>
+        <div class="panel-head">
+          <h2>Capturas</h2>
+        </div>
+        <div id="results"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

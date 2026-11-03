@@ -63,13 +63,23 @@ node index.js -n lucwx
 
 The client follows GitHub pagination (100 repositories per page, up to 1000). Homepages without a scheme are treated as `https://`. The user's own GitHub profile URL is skipped. Duplicate homepages are captured once.
 
+## Web
+
+The same capture code serves a local page:
+
+```bash
+npm start
+```
+
+Open http://127.0.0.1:3000. The interface is in Portuguese. It lists the public homepages for a GitHub user and captures up to six of them, desktop and mobile. The server screenshots only URLs that belong to that user, and it skips loopback and private hosts. Images stay on this machine, in the system temp directory.
+
 ## Tests
 
 ```bash
 npm test
 ```
 
-The tests cover homepage filtering and the GitHub client. They do not download Chromium.
+The tests cover homepage filtering, the GitHub client, and the web API. They do not download Chromium.
 
 ## License
 
