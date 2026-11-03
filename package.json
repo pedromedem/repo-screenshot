@@ -1,16 +1,19 @@
 {
   "name": "repo-screenshot",
-  "version": "1.2.0",
-  "description": "Capture desktop and mobile screenshots of the homepages linked from a GitHub user's repositories.",
-  "main": "index.js",
+  "version": "1.4.0",
+  "description": "Capture desktop and mobile screenshots of GitHub repository homepages from the CLI or the local web UI.",
+  "main": "server.js",
   "bin": {
-    "repo-screenshot": "./index.js"
+    "repo-screenshot": "./cli.js"
   },
   "files": [
-    "index.js",
-    "lib"
+    "cli.js",
+    "server.js",
+    "lib",
+    "public"
   ],
   "scripts": {
+    "start": "node server.js",
     "test": "node --test"
   },
   "engines": {
@@ -29,7 +32,9 @@
   "author": "Lucas",
   "license": "ISC",
   "dependencies": {
+    "@sparticuz/chromium": "^131.0.1",
     "commander": "^11.1.0",
-    "puppeteer": "^21.6.1"
+    "puppeteer": "^21.6.1",
+    "puppeteer-core": "^23.11.1"
   }
 }

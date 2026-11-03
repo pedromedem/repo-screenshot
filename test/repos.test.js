@@ -22,6 +22,10 @@ function jsonResponse(body, status = 200) {
 
 test("adds https to homepages without a scheme", () => {
   assert.equal(canonicalHomepage("example.com/docs", "lucwx"), "https://example.com/docs");
+  assert.equal(
+    canonicalHomepage("http://localhost:3000/app/", "lucwx"),
+    "http://localhost:3000/app"
+  );
 });
 
 test("drops the profile URL in any common form", () => {
