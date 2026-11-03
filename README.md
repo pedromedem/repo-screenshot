@@ -1,48 +1,76 @@
 # Repo Screenshot
-## Project Description
-The Repo Screenshot project is a simple tool for fetching GitHub repositories and taking screenshots of the homepages of the websites associated with these repositories. The screenshots are then stored in a directory with the name of the respective site.
 
-## Features
-Fetch GitHub repositories
-Capture screenshots of the homepage of the site associated with the repository
-Store screenshots in the corresponding directory
+Capture desktop and mobile screenshots of the homepages linked from a GitHub user's repositories.
 
-## Example Video:
-https://github.com/lucwx/web-screenshot/assets/103083001/74ce95d0-fcc5-4d09-ba69-5075917236af
+The tool reads `GET /users/:name/repos`, keeps repositories with an `http` or `https` homepage, and saves one JPEG per viewport.
 
 ## Prerequisites
-Make sure you have Node.js installed to run the project.
+
+- Node.js 18 or newer (`fetch` is part of the language runtime)
 
 ## Installation
- 1. Clone the repository:
+
 ```bash
 git clone https://github.com/lucwx/repo-screenshot.git
-```
- 2. Navigate to the project directory:
-```bash
 cd repo-screenshot
-```
-
- 3. Install the dependencies:
-```bash
 npm install
 ```
-## How to Use
- 1. Run the main script:
-```bash
-node index.js
-```
- 2. Follow the instructions to input the repository details.
-Example Directory Structure
+
+## Usage
 
 ```bash
-repo-screenshot/
-|-- screenshots/
-|   |-- site1.com.png
-|   |-- site2.org.png
-|-- index.js
-|-- README.md
-|-- ...
+node index.js -n <github-username>
 ```
-## Contribution
-Contributions are welcome! Feel free to open issues and pull requests.
+
+List the homepages without opening a browser:
+
+```bash
+node index.js -n lucwx --dry-run
+```
+
+Screenshots are written under `./screenshots`, relative to the current directory:
+
+```text
+screenshots/
+└── example.com/
+    ├── example.com_desktop.jpeg
+    └── example.com_mobile.jpeg
+```
+
+Desktop captures use a 1280×720 viewport. Mobile captures use the iPhone X layout at 1× scale. JPEG quality defaults to 80. A page that fails does not stop the rest of the run; the process exits with code 1 when any capture fails.
+
+### Options
+
+| Flag | Default | Purpose |
+| --- | --- | --- |
+| `-n, --name <username>` | required | GitHub username |
+| `-o, --output <dir>` | `screenshots` | Output directory |
+| `-d, --delay <seconds>` | `1` | Wait after load, from 0 to 120 |
+| `-q, --quality <1-100>` | `80` | JPEG quality |
+| `--timeout <seconds>` | `45` | Navigation timeout per page |
+| `--limit <count>` | all | Capture at most this many homepages |
+| `--token <token>` | `GITHUB_TOKEN` or `GH_TOKEN` | GitHub API token |
+| `--hide <selector>` | `#modal` | Selector hidden before capture. Repeat to add more. `none` hides nothing |
+| `--full-page` | off | Capture the full scrollable page |
+| `--dry-run` | off | Print homepages and exit |
+
+Unauthenticated GitHub requests share a small hourly quota. Export a token when the API answers with a rate limit:
+
+```bash
+export GITHUB_TOKEN=github_pat_...
+node index.js -n lucwx
+```
+
+The client follows GitHub pagination (100 repositories per page, up to 1000). Homepages without a scheme are treated as `https://`. The user's own GitHub profile URL is skipped. Duplicate homepages are captured once.
+
+## Tests
+
+```bash
+npm test
+```
+
+The tests cover homepage filtering and the GitHub client. They do not download Chromium.
+
+## License
+
+ISC. See [LICENSE](LICENSE).
