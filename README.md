@@ -19,13 +19,13 @@ npm install
 ## Usage
 
 ```bash
-node index.js -n <github-username>
+node cli.js -n <github-username>
 ```
 
 List the homepages without opening a browser:
 
 ```bash
-node index.js -n lucwx --dry-run
+node cli.js -n lucwx --dry-run
 ```
 
 Screenshots are written under `./screenshots`, relative to the current directory:
@@ -58,7 +58,7 @@ Unauthenticated GitHub requests share a small hourly quota. Export a token when 
 
 ```bash
 export GITHUB_TOKEN=github_pat_...
-node index.js -n lucwx
+node cli.js -n lucwx
 ```
 
 The client follows GitHub pagination (100 repositories per page, up to 1000). Homepages without a scheme are treated as `https://`. The user's own GitHub profile URL is skipped. Duplicate homepages are captured once.

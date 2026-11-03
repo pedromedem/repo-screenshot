@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const { fetchUserRepos, homepagesFromRepos } = require("./lib/repos");
 const { captureSites } = require("./lib/capture");
 const { partitionHomepages, selectCaptureUrls } = require("./lib/policy");
+const siteAssets = require("./lib/site-assets");
 
 const PUBLIC_DIR = path.join(__dirname, "public");
 const STATIC_FILES = {
@@ -188,7 +189,7 @@ function createServer(options = {}) {
     return { truncated: Boolean(truncated), ...parts };
   }
 
-  const server = http.createServer(async (req, res) => {
+  async function handle(req, res) {
     try {
       await route(req, res);
     } catch (error) {
@@ -197,7 +198,14 @@ function createServer(options = {}) {
       const message = status === 500 ? "Falha interna do servidor." : error.message;
       sendJson(res, status, { error: message });
     }
+  }
+
+  const server = http.createServer((req, res) => {
+    handle(req, res).catch((error) => {
+      console.error(error instanceof Error ? error.message : error);
+    });
   });
+  server.handle = handle;
 
   async function route(req, res) {
     const url = new URL(req.url, "http://127.0.0.1");
@@ -332,21 +340,34 @@ function toPublicResult(job, result, inlineImages) {
 
 function serveStatic(res, filename) {
   const filePath = path.join(PUBLIC_DIR, filename);
-  const body = fs.readFileSync(filePath);
+  const body = fs.existsSync(filePath) ? fs.readFileSync(filePath) : siteAssets[filename];
+  if (body === undefined) throw httpError("Não encontrado.", 404);
+  const payload = Buffer.isBuffer(body) ? body : Buffer.from(body);
   res.writeHead(200, {
     "Content-Type": CONTENT_TYPES[path.extname(filename)] || "application/octet-stream",
-    "Content-Length": body.length,
+    "Content-Length": payload.length,
     "Cache-Control": "no-cache",
   });
-  res.end(body);
+  res.end(payload);
 }
 
-if (require.main === module) {
+const server = createServer();
+
+function listen() {
+  if (server.listening) return server;
   const port = Number(process.env.PORT) || 3000;
-  const server = createServer();
-  server.listen(port, "127.0.0.1", () => {
-    console.log(`Repo Screenshot em http://127.0.0.1:${port}`);
+  const host = process.env.VERCEL ? "0.0.0.0" : "127.0.0.1";
+  server.listen(port, host, () => {
+    console.log(`Repo Screenshot em http://${host}:${port}`);
   });
+  return server;
 }
 
-module.exports = { createServer };
+if (require.main === module) listen();
+
+function handler(req, res) {
+  return server.handle(req, res);
+}
+
+module.exports = handler;
+module.exports.createServer = createServer;
